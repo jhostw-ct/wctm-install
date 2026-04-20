@@ -420,6 +420,32 @@ CHROOT_SCRIPT
 ok "Chroot completado"
 
 # -----------------------------------------------------------------------------
+section "EXTRA // Copiando post-install.sh al usuario"
+
+# Buscar post-install.sh en el mismo directorio que este script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+POST_SCRIPT="$SCRIPT_DIR/post-install.sh"
+
+if [[ -f "$POST_SCRIPT" ]]; then
+    TARGET_HOME="/mnt/home/$USERNAME"
+    cp "$POST_SCRIPT" "$TARGET_HOME/post-install.sh"
+    # Dar ownership al usuario (necesitamos su UID/GID dentro del sistema instalado)
+    USERID=$(arch-chroot /mnt id -u "$USERNAME")
+    GROUPID=$(arch-chroot /mnt id -g "$USERNAME")
+    chown "$USERID:$GROUPID" "$TARGET_HOME/post-install.sh"
+    chmod +x "$TARGET_HOME/post-install.sh"
+    ok "post-install.sh copiado a /home/$USERNAME/"
+    ok "Permisos: chmod +x aplicado"
+    info "Al iniciar sesion ejecuta: bash ~/post-install.sh"
+else
+    warn "No se encontro post-install.sh junto a install.sh"
+    warn "Ruta buscada: $POST_SCRIPT"
+    info "Descargalo manualmente despues de reiniciar desde tu repo."
+fi
+
+sleep 1
+
+# -----------------------------------------------------------------------------
 section "COMPLETADO // Arch Linux instalado"
 
 echo -e "${TN_GREEN}"
@@ -438,7 +464,7 @@ echo ""
 echo -e "  ${TN_YELLOW}Proximos pasos:${NC}"
 echo -e "  ${DIM}  1. Retira el USB${NC}"
 echo -e "  ${DIM}  2. Inicia sesion como ${TN_WHITE}$USERNAME${NC}"
-echo -e "  ${DIM}  3. Clona tu repo y ejecuta${NC} ${TN_CYAN}bash post-install.sh${NC}"
+echo -e "  ${DIM}  3. Ejecuta${NC} ${TN_CYAN}bash ~/post-install.sh${NC}"
 echo ""
 
 if confirm "Desmontar y reiniciar ahora?"; then
