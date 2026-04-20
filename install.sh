@@ -7,7 +7,7 @@
 #       bash install.sh
 # =============================================================================
 
-set -e  # Detener en cualquier error
+set -e
 
 # -----------------------------------------------------------------------------
 # COLORES
@@ -18,23 +18,22 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# -----------------------------------------------------------------------------
-# HELPERS
-# -----------------------------------------------------------------------------
 info()    { echo -e "${CYAN}[INFO]${NC} $1"; }
 ok()      { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
-section() { echo -e "\n${BOLD}${BLUE}══════════════════════════════════════${NC}"; \
-            echo -e "${BOLD}${BLUE}  $1${NC}"; \
-            echo -e "${BOLD}${BLUE}══════════════════════════════════════${NC}\n"; }
+section() {
+    echo -e "\n${BOLD}${BLUE}══════════════════════════════════════${NC}"
+    echo -e "${BOLD}${BLUE}  $1${NC}"
+    echo -e "${BOLD}${BLUE}══════════════════════════════════════${NC}\n"
+}
 
+# Enter o Y = confirmar, cualquier otra cosa = cancelar
 confirm() {
-    # $1 = pregunta, retorna 0 si yes
-    read -rp "$(echo -e "${YELLOW}$1 [s/N]: ${NC}")" ans
-    [[ "$ans" =~ ^[sS]$ ]]
+    read -rp "$(echo -e "${YELLOW}$1 [Y/n]: ${NC}")" ans
+    [[ -z "$ans" || "$ans" =~ ^[Yy]$ ]]
 }
 
 # -----------------------------------------------------------------------------
@@ -49,7 +48,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# FASE 1 — VERIFICAR CONEXIÓN
+# FASE 1 — CONEXIÓN A INTERNET
 # -----------------------------------------------------------------------------
 section "FASE 1 — Conexión a Internet"
 
@@ -60,51 +59,35 @@ check_connection() {
 if check_connection; then
     ok "Conexión a Internet detectada ✓"
 else
-    warn "Sin conexión. Verificando interfaces..."
+    warn "Sin conexión. Interfaces disponibles:"
     echo ""
-
-    # Mostrar interfaces disponibles
-    info "Interfaces de red disponibles:"
     ip link show
     echo ""
-
     echo -e "${YELLOW}Opciones:${NC}"
     echo "  1) Conectar por WiFi (iwctl)"
-    echo "  2) Ya conecté manualmente, re-verificar"
-    echo "  3) Salir y conectarme primero"
+    echo "  2) Ya me conecté, re-verificar"
+    echo "  3) Salir"
     read -rp "$(echo -e "${YELLOW}Elige [1/2/3]: ${NC}")" net_choice
 
     case "$net_choice" in
         1)
-            info "Abriendo iwctl... Comandos útiles:"
+            info "Comandos dentro de iwctl:"
             echo -e "  ${CYAN}device list${NC}"
             echo -e "  ${CYAN}station wlan0 scan${NC}"
             echo -e "  ${CYAN}station wlan0 get-networks${NC}"
             echo -e "  ${CYAN}station wlan0 connect \"NombreRed\"${NC}"
-            echo -e "  ${CYAN}exit${NC}"
-            echo ""
+            echo -e "  ${CYAN}exit${NC}\n"
             iwctl
             ;;
-        2)
-            info "Re-verificando..."
-            ;;
-        3)
-            error "Conéctate a Internet y ejecuta el script de nuevo."
-            ;;
-        *)
-            error "Opción inválida."
-            ;;
+        2) info "Re-verificando..." ;;
+        3) error "Conéctate a Internet y vuelve a ejecutar el script." ;;
+        *) error "Opción inválida." ;;
     esac
 
-    # Re-verificar
-    if check_connection; then
-        ok "Conexión establecida ✓"
-    else
-        error "Sigue sin haber conexión. Verifica tu red y vuelve a intentarlo."
-    fi
+    check_connection || error "Sin conexión. Verifica tu red e intenta de nuevo."
+    ok "Conexión establecida ✓"
 fi
 
-# Sincronizar reloj
 info "Sincronizando reloj..."
 timedatectl set-ntp true
 ok "NTP activado ✓"
@@ -114,63 +97,65 @@ ok "NTP activado ✓"
 # -----------------------------------------------------------------------------
 section "FASE 2 — Configuración del sistema"
 
-# Hostname
-echo -e "${YELLOW}Ingresa el nombre de la máquina (hostname):${NC}"
-read -rp "  Hostname [archbook]: " HOSTNAME
+read -rp "$(echo -e "${YELLOW}Hostname [archbook]: ${NC}")" HOSTNAME
 HOSTNAME="${HOSTNAME:-archbook}"
 ok "Hostname: $HOSTNAME"
-
 echo ""
 
-# Usuario
-echo -e "${YELLOW}Ingresa el nombre de usuario:${NC}"
-read -rp "  Usuario [william]: " USERNAME
+read -rp "$(echo -e "${YELLOW}Nombre de usuario [william]: ${NC}")" USERNAME
 USERNAME="${USERNAME:-william}"
 ok "Usuario: $USERNAME"
-
 echo ""
 
-# Contraseña root
 echo -e "${YELLOW}Contraseña para ROOT:${NC}"
 while true; do
-    read -rsp "  root password: " ROOT_PASS; echo
-    read -rsp "  Confirmar root password: " ROOT_PASS2; echo
+    read -rsp "  Password: " ROOT_PASS; echo
+    read -rsp "  Confirmar: " ROOT_PASS2; echo
     [[ "$ROOT_PASS" == "$ROOT_PASS2" ]] && break
-    warn "Las contraseñas no coinciden. Intenta de nuevo."
+    warn "No coinciden, intenta de nuevo."
 done
-ok "Contraseña root configurada ✓"
-
+ok "Contraseña root ✓"
 echo ""
 
-# Contraseña usuario
-echo -e "${YELLOW}Contraseña para ${USERNAME}:${NC}"
+echo -e "${YELLOW}Contraseña para ${CYAN}${USERNAME}${YELLOW}:${NC}"
 while true; do
-    read -rsp "  $USERNAME password: " USER_PASS; echo
-    read -rsp "  Confirmar $USERNAME password: " USER_PASS2; echo
+    read -rsp "  Password: " USER_PASS; echo
+    read -rsp "  Confirmar: " USER_PASS2; echo
     [[ "$USER_PASS" == "$USER_PASS2" ]] && break
-    warn "Las contraseñas no coinciden. Intenta de nuevo."
+    warn "No coinciden, intenta de nuevo."
 done
-ok "Contraseña de $USERNAME configurada ✓"
+ok "Contraseña de $USERNAME ✓"
 
 # -----------------------------------------------------------------------------
-# FASE 3 — DISCO
+# FASE 3 — SELECCIÓN DE DISCO
 # -----------------------------------------------------------------------------
 section "FASE 3 — Selección de disco"
 
-echo -e "${CYAN}Discos disponibles:${NC}"
-echo ""
-lsblk -d -o NAME,SIZE,MODEL,TYPE | grep disk
-echo ""
+mapfile -t DISKS < <(lsblk -d -n -o NAME,SIZE,MODEL | grep -v "^loop")
 
-read -rp "$(echo -e "${YELLOW}Ingresa el disco destino (ej: nvme0n1, sda): ${NC}")" DISK_NAME
-DISK="/dev/$DISK_NAME"
-
-# Validar que existe
-if [[ ! -b "$DISK" ]]; then
-    error "El disco $DISK no existe. Verifica con: lsblk"
+if [[ ${#DISKS[@]} -eq 0 ]]; then
+    error "No se encontraron discos."
 fi
 
-# Definir particiones según tipo de disco
+echo -e "${CYAN}Discos disponibles:${NC}\n"
+for i in "${!DISKS[@]}"; do
+    echo -e "  ${BOLD}[$((i+1))]${NC}  ${DISKS[$i]}"
+done
+echo ""
+
+while true; do
+    read -rp "$(echo -e "${YELLOW}Selecciona el número del disco: ${NC}")" DISK_NUM
+    if [[ "$DISK_NUM" =~ ^[0-9]+$ ]] && \
+       [[ "$DISK_NUM" -ge 1 ]] && \
+       [[ "$DISK_NUM" -le ${#DISKS[@]} ]]; then
+        break
+    fi
+    warn "Número inválido. Elige entre 1 y ${#DISKS[@]}."
+done
+
+DISK_NAME=$(echo "${DISKS[$((DISK_NUM-1))]}" | awk '{print $1}')
+DISK="/dev/$DISK_NAME"
+
 if [[ "$DISK_NAME" == nvme* ]]; then
     PART_EFI="${DISK}p1"
     PART_ROOT="${DISK}p2"
@@ -180,106 +165,109 @@ else
 fi
 
 echo ""
-warn "⚠️  ADVERTENCIA: Se borrará TODO el contenido de $DISK"
-echo -e "   Disco seleccionado: ${RED}${BOLD}$DISK${NC}"
-echo -e "   Tamaño: $(lsblk -d -n -o SIZE $DISK)"
+echo -e "  ${CYAN}Disco:${NC}          ${BOLD}$DISK${NC}"
+echo -e "  ${CYAN}Tamaño:${NC}         $(lsblk -d -n -o SIZE "$DISK")"
+echo -e "  ${CYAN}Partición EFI:${NC}  $PART_EFI  → 1G   → FAT32"
+echo -e "  ${CYAN}Partición Root:${NC} $PART_ROOT → Resto → ext4"
+echo ""
+warn "⚠  TODO el contenido de $DISK será BORRADO permanentemente."
 echo ""
 
-if ! confirm "¿Estás SEGURO de que quieres borrar $DISK?"; then
-    error "Operación cancelada. Vuelve a ejecutar el script."
-fi
-
-ok "Disco confirmado: $DISK"
+confirm "¿Confirmas usar $DISK?" || error "Operación cancelada."
 
 # -----------------------------------------------------------------------------
 # FASE 4 — PAQUETES
 # -----------------------------------------------------------------------------
 section "FASE 4 — Paquetes a instalar"
 
-BASE_PACKAGES="base linux linux-lts linux-firmware amd-ucode base-devel sudo nano git curl wget"
+BASE_PACKAGES=(
+    base
+    linux
+    linux-lts
+    linux-firmware
+    amd-ucode
+    base-devel
+    sudo
+    nano
+    git
+    curl
+    wget
+    zsh
+    zsh-completions
+    networkmanager
+    grub
+    efibootmgr
+)
 
-echo -e "${CYAN}Paquetes base que se instalarán:${NC}"
-echo ""
-for pkg in $BASE_PACKAGES; do
+echo -e "${CYAN}Paquetes base:${NC}\n"
+for pkg in "${BASE_PACKAGES[@]}"; do
     echo -e "  ${GREEN}✓${NC} $pkg"
 done
 echo ""
 
-echo -e "${YELLOW}¿Quieres agregar paquetes adicionales ahora?${NC}"
-echo -e "${CYAN}(Separados por espacios, ej: neovim htop fastfetch)${NC}"
-echo -e "${CYAN}(Enter para continuar sin extras)${NC}"
-read -rp "  Paquetes extra: " EXTRA_PACKAGES
+echo -e "${YELLOW}Paquetes extra (separados por espacio, Enter para ninguno):${NC}"
+read -rp "  > " EXTRA_INPUT
 
-if [[ -n "$EXTRA_PACKAGES" ]]; then
+EXTRA_PACKAGES=()
+if [[ -n "$EXTRA_INPUT" ]]; then
+    read -ra EXTRA_PACKAGES <<< "$EXTRA_INPUT"
     echo ""
-    echo -e "${CYAN}Paquetes extra que se agregarán:${NC}"
-    for pkg in $EXTRA_PACKAGES; do
+    echo -e "${CYAN}Extras agregados:${NC}"
+    for pkg in "${EXTRA_PACKAGES[@]}"; do
         echo -e "  ${GREEN}+${NC} $pkg"
     done
 fi
 
-ALL_PACKAGES="$BASE_PACKAGES $EXTRA_PACKAGES"
-
-echo ""
+ALL_PACKAGES=("${BASE_PACKAGES[@]}" "${EXTRA_PACKAGES[@]}")
 
 # -----------------------------------------------------------------------------
-# RESUMEN FINAL ANTES DE PROCEDER
+# RESUMEN FINAL
 # -----------------------------------------------------------------------------
 section "RESUMEN — Confirma antes de continuar"
 
 echo -e "  ${CYAN}Hostname:${NC}        $HOSTNAME"
-echo -e "  ${CYAN}Usuario:${NC}         $USERNAME"
-echo -e "  ${CYAN}Disco:${NC}           $DISK  (SE BORRARÁ TODO)"
-echo -e "  ${CYAN}Partición EFI:${NC}   $PART_EFI  →  1G  →  FAT32"
-echo -e "  ${CYAN}Partición Root:${NC}  $PART_ROOT →  Resto → ext4"
+echo -e "  ${CYAN}Usuario:${NC}         $USERNAME  (shell: /bin/zsh)"
+echo -e "  ${CYAN}Disco:${NC}           $DISK  ← TODO SERÁ BORRADO"
+echo -e "  ${CYAN}Partición EFI:${NC}   $PART_EFI  → 1G → FAT32"
+echo -e "  ${CYAN}Partición Root:${NC}  $PART_ROOT → Resto → ext4"
 echo -e "  ${CYAN}Timezone:${NC}        America/Lima"
 echo -e "  ${CYAN}Locale:${NC}          en_US.UTF-8"
-echo -e "  ${CYAN}Paquetes:${NC}        $ALL_PACKAGES"
+echo -e "  ${CYAN}Paquetes:${NC}        ${ALL_PACKAGES[*]}"
 echo ""
 
-if ! confirm "¿Todo correcto? Comenzar instalación"; then
-    error "Instalación cancelada."
-fi
+confirm "¿Todo correcto? Iniciar instalación" || error "Instalación cancelada."
 
 # =============================================================================
 # INSTALACIÓN
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# FASE 5 — PARTICIONAR
-# -----------------------------------------------------------------------------
-section "FASE 5 — Particionando disco"
+section "FASE 5 — Particionando $DISK"
 
-info "Limpiando disco $DISK..."
+info "Limpiando disco..."
 wipefs -af "$DISK"
 sgdisk --zap-all "$DISK"
 ok "Disco limpiado ✓"
 
 info "Creando tabla GPT y particiones..."
-sgdisk -n 1:0:+1G   -t 1:ef00 -c 1:"EFI"  "$DISK"
-sgdisk -n 2:0:0      -t 2:8300 -c 2:"ROOT" "$DISK"
+sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:"EFI"  "$DISK"
+sgdisk -n 2:0:0     -t 2:8300 -c 2:"ROOT" "$DISK"
 ok "Particiones creadas ✓"
 
-# Esperar a que el kernel reconozca las particiones
 sleep 2
 partprobe "$DISK"
 sleep 1
 
 # -----------------------------------------------------------------------------
-# FASE 6 — FORMATEAR
-# -----------------------------------------------------------------------------
-section "FASE 6 — Formateando particiones"
+section "FASE 6 — Formateando"
 
-info "Formateando EFI ($PART_EFI) → FAT32..."
+info "Formateando $PART_EFI → FAT32..."
 mkfs.fat -F32 "$PART_EFI"
-ok "EFI formateada ✓"
+ok "EFI lista ✓"
 
-info "Formateando Root ($PART_ROOT) → ext4..."
+info "Formateando $PART_ROOT → ext4..."
 mkfs.ext4 -F "$PART_ROOT"
-ok "Root formateada ✓"
+ok "Root lista ✓"
 
-# -----------------------------------------------------------------------------
-# FASE 7 — MONTAR
 # -----------------------------------------------------------------------------
 section "FASE 7 — Montando particiones"
 
@@ -289,17 +277,12 @@ mount "$PART_EFI" /mnt/boot/efi
 ok "Particiones montadas ✓"
 
 # -----------------------------------------------------------------------------
-# FASE 8 — INSTALAR BASE
-# -----------------------------------------------------------------------------
-section "FASE 8 — Instalando sistema base"
+section "FASE 8 — Instalando sistema base (pacstrap)"
 
-info "Ejecutando pacstrap (puede tardar varios minutos)..."
-# shellcheck disable=SC2086
-pacstrap -K /mnt $ALL_PACKAGES
+info "Esto puede tardar varios minutos..."
+pacstrap -K /mnt "${ALL_PACKAGES[@]}"
 ok "Sistema base instalado ✓"
 
-# -----------------------------------------------------------------------------
-# FASE 9 — FSTAB
 # -----------------------------------------------------------------------------
 section "FASE 9 — Generando fstab"
 
@@ -309,87 +292,74 @@ echo ""
 cat /mnt/etc/fstab
 
 # -----------------------------------------------------------------------------
-# FASE 10 — CONFIGURACIÓN (via arch-chroot)
-# -----------------------------------------------------------------------------
 section "FASE 10 — Configurando sistema (chroot)"
-
-info "Entrando al chroot para configurar..."
 
 arch-chroot /mnt /bin/bash <<CHROOT_SCRIPT
 set -e
 
-# Zona horaria
+echo "  → Zona horaria America/Lima..."
 ln -sf /usr/share/zoneinfo/America/Lima /etc/localtime
 hwclock --systohc
-echo "  [OK] Zona horaria: America/Lima"
+echo "  [OK] Timezone"
 
-# Locale
+echo "  → Locale en_US.UTF-8..."
 sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
-locale-gen
+locale-gen > /dev/null
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
-echo "  [OK] Locale: en_US.UTF-8"
+echo "  [OK] Locale"
 
-# Hostname
+echo "  → Hostname $HOSTNAME..."
 echo "$HOSTNAME" > /etc/hostname
 cat > /etc/hosts <<EOF
 127.0.0.1   localhost
 ::1         localhost
 127.0.1.1   $HOSTNAME.localdomain $HOSTNAME
 EOF
-echo "  [OK] Hostname: $HOSTNAME"
+echo "  [OK] Hostname"
 
-# NetworkManager
+echo "  → NetworkManager..."
 systemctl enable NetworkManager
-echo "  [OK] NetworkManager habilitado"
+echo "  [OK] NetworkManager"
 
-# Contraseña root
+echo "  → Contraseña root..."
 echo "root:$ROOT_PASS" | chpasswd
-echo "  [OK] Contraseña root configurada"
+echo "  [OK] root password"
 
-# Usuario
-useradd -m -G wheel -s /bin/bash "$USERNAME"
+echo "  → Usuario $USERNAME (shell: zsh)..."
+useradd -m -G wheel -s /bin/zsh "$USERNAME"
 echo "$USERNAME:$USER_PASS" | chpasswd
-echo "  [OK] Usuario $USERNAME creado"
+echo "  [OK] Usuario creado"
 
-# Sudo: habilitar wheel
+echo "  → sudo para grupo wheel..."
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
-echo "  [OK] sudo para wheel configurado"
+echo "  [OK] sudoers"
 
-# GRUB
-pacman -S --noconfirm grub efibootmgr
+echo "  → GRUB..."
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
 grub-mkconfig -o /boot/grub/grub.cfg
-echo "  [OK] GRUB instalado y configurado"
+echo "  [OK] GRUB"
 
 echo ""
-echo "  Configuración del chroot completada."
+echo "  Configuración completada."
 CHROOT_SCRIPT
 
 ok "Chroot completado ✓"
 
 # -----------------------------------------------------------------------------
-# FASE 11 — FINALIZAR
-# -----------------------------------------------------------------------------
 section "✅ INSTALACIÓN COMPLETADA"
 
-echo -e "  ${GREEN}Sistema base de Arch Linux instalado correctamente.${NC}"
-echo ""
+echo -e "  ${GREEN}Arch Linux instalado correctamente.${NC}\n"
 echo -e "  ${CYAN}Hostname:${NC}  $HOSTNAME"
-echo -e "  ${CYAN}Usuario:${NC}   $USERNAME"
-echo -e "  ${CYAN}Disco:${NC}     $DISK"
-echo ""
+echo -e "  ${CYAN}Usuario:${NC}   $USERNAME  (shell: zsh)"
+echo -e "  ${CYAN}Disco:${NC}     $DISK\n"
 echo -e "  ${YELLOW}Próximos pasos:${NC}"
 echo -e "    1. Retira el USB"
-echo -e "    2. Ejecuta: ${CYAN}umount -R /mnt && reboot${NC}"
-echo -e "    3. Inicia sesión como ${CYAN}$USERNAME${NC}"
-echo -e "    4. Clona tu repo y ejecuta ${CYAN}post-install.sh${NC}"
-echo ""
+echo -e "    2. Inicia sesión como ${CYAN}$USERNAME${NC}"
+echo -e "    3. Clona tu repo y ejecuta ${CYAN}bash post-install.sh${NC}\n"
 
 if confirm "¿Desmontar y reiniciar ahora?"; then
-    info "Desmontando particiones..."
     umount -R /mnt
-    info "Reiniciando..."
     reboot
 else
-    info "Cuando estés listo ejecuta: umount -R /mnt && reboot"
+    info "Cuando estés listo: umount -R /mnt && reboot"
 fi
