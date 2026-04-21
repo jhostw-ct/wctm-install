@@ -329,23 +329,85 @@ ok "fstrim.timer  (SSD TRIM semanal)"
 sleep 1
 
 # =============================================================================
-# FASE 8 — PAQUETES EXTRA OPCIONALES
+# FASE 8 — PAQUETES EXTRA PACMAN
 # =============================================================================
-section "FASE 8 // Paquetes adicionales (opcional)"
+section "FASE 8 // Paquetes extra — pacman (repositorios oficiales)"
 
-echo -e " ${TN_YELLOW}  Paquetes extra desde pacman o AUR${NC}"
+echo -e " ${TN_YELLOW}  Paquetes oficiales a instalar${NC}"
 echo -e " ${DIM}${TN_GRAY}  Separados por espacio. Enter para saltar.${NC}"
 echo ""
-read -rp "  > " EXTRA_NOW
+read -rp "  > " EXTRA_PACMAN
 
-if [[ -n "$EXTRA_NOW" ]]; then
+if [[ -n "$EXTRA_PACMAN" ]]; then
+    echo ""
+    info "Instalando con pacman..."
+    # shellcheck disable=SC2086
+    sudo pacman -S --noconfirm --needed $EXTRA_PACMAN
+    ok "Paquetes pacman instalados"
+else
+    dim "Sin paquetes extra de pacman."
+fi
+
+sleep 1
+
+# =============================================================================
+# FASE 9 — PAQUETES EXTRA YAY (AUR)
+# =============================================================================
+section "FASE 9 // Paquetes extra — yay (AUR)"
+
+echo -e " ${TN_YELLOW}  Paquetes AUR a instalar${NC}"
+echo -e " ${DIM}${TN_GRAY}  Separados por espacio. Enter para saltar.${NC}"
+echo ""
+read -rp "  > " EXTRA_YAY
+
+if [[ -n "$EXTRA_YAY" ]]; then
     echo ""
     info "Instalando con yay..."
     # shellcheck disable=SC2086
-    yay -S --noconfirm --needed $EXTRA_NOW
-    ok "Paquetes extra instalados"
+    yay -S --noconfirm --needed $EXTRA_YAY
+    ok "Paquetes AUR instalados"
 else
-    dim "Sin paquetes extra."
+    dim "Sin paquetes extra de AUR."
+fi
+
+sleep 1
+
+# =============================================================================
+# FASE 10 — SERVICIOS MANUALES
+# =============================================================================
+section "FASE 10 // Activar servicios manualmente (opcional)"
+
+echo -e " ${TN_YELLOW}  Servicios a activar${NC}"
+echo -e " ${DIM}${TN_GRAY}  Escribe un servicio por linea. Enter vacio para terminar.${NC}"
+echo -e " ${DIM}${TN_GRAY}  Ejemplos: sddm  /  ly  /  bluetooth  /  cups  /  docker${NC}"
+echo ""
+
+SERVICES_ENABLED=()
+
+while true; do
+    read -rp "  ${TN_BLUE}servicio>${NC} " SVC
+    # Enter vacio = salir del loop
+    [[ -z "$SVC" ]] && break
+
+    echo ""
+    # Intentar enable --now, si falla avisar pero NO detener el script
+    if sudo systemctl enable --now "$SVC" 2>/dev/null; then
+        ok "$SVC activado"
+        SERVICES_ENABLED+=("$SVC")
+    else
+        warn "No se pudo activar $SVC — verifica que este instalado"
+    fi
+    echo ""
+done
+
+if [[ ${#SERVICES_ENABLED[@]} -eq 0 ]]; then
+    dim "Sin servicios manuales activados."
+else
+    echo ""
+    info "Servicios activados en esta sesion:"
+    for svc in "${SERVICES_ENABLED[@]}"; do
+        ok "$svc"
+    done
 fi
 
 sleep 1
@@ -374,16 +436,15 @@ dim "[+] Audio          pipewire + wireplumber (activo)"
 dim "[+] yay            AUR helper listo"
 dim "[+] Carpetas       xdg-user-dirs / .local/share/icons / fonts"
 dim "[+] Servicios      power-profiles-daemon / fstrim.timer"
+
+# Mostrar servicios manuales si se activaron
+if [[ ${#SERVICES_ENABLED[@]} -gt 0 ]]; then
+    SVCLIST=$(IFS=' / '; echo "${SERVICES_ENABLED[*]}")
+    dim "[+] Servicios manuales  $SVCLIST"
+fi
 echo ""
-echo -e " ${TN_YELLOW}  Proximos pasos:${NC}"
-echo -e " ${DIM}${TN_GRAY}  ->  ${TN_CYAN}yay -S hyprland${NC}"
-echo -e " ${DIM}${TN_GRAY}  ->  ${TN_CYAN}sudo pacman -S kitty${NC}"
-echo -e " ${DIM}${TN_GRAY}  ->  Relogin para aplicar cambios${NC}"
+echo -e " ${DIM}${TN_GRAY}  \"Un gran poder conlleva una gran responsabilidad.\"${NC}"
 echo ""
 
-if confirm "Reiniciar ahora?"; then
-    info "Reiniciando..."
-    sudo reboot
-else
-    dim "Reinicia cuando estes listo:  sudo reboot"
-fi
+read -rp "$(echo -e " ${TN_YELLOW}[?]${NC} Presiona Enter para reiniciar... ")" _
+sudo reboot
