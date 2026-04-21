@@ -398,7 +398,7 @@ if confirm "Quieres activar algun servicio adicional?"; then
         echo ""
 
         # Intentar activar
-        if sudo systemctl enable --now "$SVC" 2>/dev/null; then
+        if sudo systemctl enable "$SVC" 2>/dev/null; then
             ok "$SVC activado"
             SERVICES_ENABLED+=("$SVC")
         else

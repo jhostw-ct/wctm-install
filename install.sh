@@ -409,7 +409,7 @@ sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 echo "  [OK] sudoers"
 
 echo "  -> GRUB..."
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=ARCH
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=WCTMi
 grub-mkconfig -o /boot/grub/grub.cfg
 echo "  [OK] GRUB"
 
@@ -446,7 +446,7 @@ fi
 sleep 1
 
 # -----------------------------------------------------------------------------
-section "COMPLETADO // Arch Linux instalado"
+section "COMPLETADO // Arch Linux instalado mi hermoso"
 
 echo -e "${TN_GREEN}"
 echo "  .o88b.  .d88b.  .88b  d88. d8888b. db      db"
@@ -464,7 +464,7 @@ echo ""
 echo -e "  ${TN_YELLOW}Proximos pasos:${NC}"
 echo -e "  ${DIM}  1. Retira el USB${NC}"
 echo -e "  ${DIM}  2. Inicia sesion como ${TN_WHITE}$USERNAME${NC}"
-echo -e "  ${DIM}  3. Ejecuta${NC} ${TN_CYAN}bash ~/post-install.sh${NC}"
+echo -e "  ${DIM}  3. Ejecuta${NC} ${TN_CYAN}zsh ~/post-install.sh${NC}"
 echo ""
 
 if confirm "Desmontar y reiniciar ahora?"; then
