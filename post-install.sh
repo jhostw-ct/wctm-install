@@ -16,7 +16,6 @@ TN_CYAN='\033[38;5;73m'
 TN_GREEN='\033[38;5;120m'
 TN_YELLOW='\033[38;5;179m'
 TN_RED='\033[38;5;203m'
-TN_MAGENTA='\033[38;5;204m'
 TN_GRAY='\033[38;5;238m'
 TN_WHITE='\033[38;5;255m'
 BOLD='\033[1m'
@@ -27,7 +26,7 @@ info()  { echo -e " ${TN_CYAN}[*]${NC} $1"; }
 ok()    { echo -e " ${TN_GREEN}[+]${NC} $1"; }
 warn()  { echo -e " ${TN_YELLOW}[!]${NC} $1"; }
 error() { echo -e " ${TN_RED}[x]${NC} $1"; exit 1; }
-dim()   { echo -e " ${DIM}${TN_GRAY}$1${NC}"; }
+dim()   { echo -e " ${DIM}${TN_GRAY}    $1${NC}"; }
 
 section() {
     clear
@@ -48,18 +47,18 @@ confirm() {
 # -----------------------------------------------------------------------------
 clear
 echo -e "${TN_PURPLE}"
-echo "  ┌─────────────────────────────────────────────────────┐"
-echo "  │                                                     │"
-echo "  │   ____           _     ___           _        _ _  │"
+echo "  ┌──────────────────────────────────────────────────────┐"
+echo "  │                                                      │"
+echo "  │   ____           _     ___           _        _ _   │"
 echo "  │  |  _ \ ___  ___| |_  |_ _|_ __  ___| |_ __ _| | | │"
 echo "  │  | |_) / _ \/ __| __|  | || '_ \/ __| __/ _\` | | | │"
 echo "  │  |  __/ (_) \__ \ |_   | || | | \__ \ || (_| | | | │"
 echo "  │  |_|   \___/|___/\__| |___|_| |_|___/\__\__,_|_|_| │"
-echo "  │                                                     │"
-echo "  │         Lenovo V15 G2 ALC  //  Ryzen 5 5500U        │"
-echo "  └─────────────────────────────────────────────────────┘"
+echo "  │                                                      │"
+echo "  │          Lenovo V15 G2 ALC  //  Ryzen 5 5500U        │"
+echo "  └──────────────────────────────────────────────────────┘"
 echo -e "${NC}"
-echo -e " ${DIM}${TN_GRAY}  post-install.sh — Ejecutando como: ${TN_WHITE}$USER${NC}"
+echo -e " ${DIM}${TN_GRAY}  post-install.sh — Usuario: ${TN_WHITE}$USER${NC}"
 echo -e " ${DIM}${TN_GRAY}  $(date)${NC}"
 echo ""
 
@@ -78,12 +77,13 @@ ok "Usuario ${TN_WHITE}$USER${NC} verificado"
 echo ""
 read -rp "$(echo -e " ${TN_YELLOW}[?]${NC} Presiona Enter para comenzar... ")" _
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 1 — PACMAN.CONF
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 1 // Configurando pacman.conf"
 
 info "Aplicando mejoras a /etc/pacman.conf..."
+echo ""
 
 # Color
 if grep -q "^Color" /etc/pacman.conf; then
@@ -104,9 +104,8 @@ fi
 # ParallelDownloads = 10
 if grep -q "^ParallelDownloads" /etc/pacman.conf; then
     sudo sed -i 's/^ParallelDownloads.*/ParallelDownloads = 10/' /etc/pacman.conf
-    ok "ParallelDownloads actualizado a 10"
+    ok "ParallelDownloads -> 10"
 else
-    # Agregarlo debajo de ILoveCandy si existe, si no debajo de Color
     sudo sed -i '/^ILoveCandy/a ParallelDownloads = 10' /etc/pacman.conf
     ok "ParallelDownloads = 10 agregado"
 fi
@@ -116,7 +115,6 @@ if grep -q "^\[multilib\]" /etc/pacman.conf; then
     ok "multilib ya estaba habilitado"
 else
     info "Habilitando repositorio multilib..."
-    # Descomenta #[multilib] y la linea Include siguiente
     sudo sed -i '/^#\[multilib\]/{
         s/^#//
         n
@@ -126,22 +124,21 @@ else
 fi
 
 echo ""
-info "Sincronizando base de datos con nueva configuracion..."
-sudo pacman -Sy
-ok "pacman.conf configurado y sincronizado"
-
+info "Sincronizando base de datos..."
+sudo pacman -Sy --noconfirm
 echo ""
-dim "  Resumen de cambios:"
-dim "  (+) Color"
-dim "  (+) ILoveCandy"
-dim "  (+) ParallelDownloads = 10"
-dim "  (+) [multilib] habilitado"
+ok "pacman.conf listo"
+echo ""
+dim "Color            activado"
+dim "ILoveCandy       activado"
+dim "ParallelDownloads = 10"
+dim "[multilib]       habilitado"
 
 sleep 2
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 2 — ACTUALIZAR SISTEMA
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 2 // Actualizando sistema"
 
 info "Ejecutando pacman -Syu..."
@@ -152,24 +149,23 @@ ok "Sistema actualizado"
 
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 3 — INSTALAR PAQUETES
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 3 // Instalando paquetes"
 
-PACKAGES=(
-    # Drivers AMD — Ryzen 5 5500U / Radeon Vega 7
+# ── Drivers AMD ──────────────────────────────────────────────────────────────
+AMD_PKGS=(
     mesa
     lib32-mesa
     vulkan-radeon
     lib32-vulkan-radeon
-    xf86-video-amdgpu
     libva-mesa-driver
     lib32-libva-mesa-driver
-    mesa-vdpau
-    lib32-mesa-vdpau
+)
 
-    # Audio — Pipewire
+# ── Audio — Pipewire ──────────────────────────────────────────────────────────
+AUDIO_PKGS=(
     pipewire
     pipewire-pulse
     pipewire-alsa
@@ -177,88 +173,87 @@ PACKAGES=(
     wireplumber
     pavucontrol
     alsa-utils
+)
 
-    # Sistema y utilidades
-    htop
+# ── Sistema y utilidades ──────────────────────────────────────────────────────
+SYSTEM_PKGS=(
     btop
     fastfetch
-    tree
     unzip
     zip
-    p7zip
     rsync
     man-db
     man-pages
-    less
     xdg-user-dirs
+)
 
-    # Red
-    networkmanager-applet
-    nm-connection-editor
-
-    # Desarrollo
-    python
-    python-pip
-    nodejs
-    npm
-
-    # Fuentes
+# ── Fuentes ───────────────────────────────────────────────────────────────────
+FONT_PKGS=(
     ttf-jetbrains-mono-nerd
     ttf-nerd-fonts-symbols
     noto-fonts
     noto-fonts-emoji
+)
 
-    # Bluetooth
-    bluez
-    bluez-utils
-
-    # Power management AMD
+# ── Power ─────────────────────────────────────────────────────────────────────
+POWER_PKGS=(
     power-profiles-daemon
 )
 
-# Mostrar agrupados
+# Mostrar lo que se va a instalar
 echo -e " ${TN_CYAN}  Drivers AMD:${NC}"
-for p in mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon xf86-video-amdgpu libva-mesa-driver lib32-libva-mesa-driver mesa-vdpau lib32-mesa-vdpau; do
-    echo -e "  ${TN_BLUE}(+)${NC} $p"
-done
+for p in "${AMD_PKGS[@]}";    do echo -e "  ${TN_BLUE}(+)${NC} $p"; done
 
 echo ""
 echo -e " ${TN_CYAN}  Audio:${NC}"
-for p in pipewire pipewire-pulse pipewire-alsa pipewire-jack wireplumber pavucontrol alsa-utils; do
-    echo -e "  ${TN_BLUE}(+)${NC} $p"
-done
+for p in "${AUDIO_PKGS[@]}";  do echo -e "  ${TN_BLUE}(+)${NC} $p"; done
 
 echo ""
-echo -e " ${TN_CYAN}  Sistema / utilidades / fuentes / BT / power:${NC}"
-for p in htop btop fastfetch tree unzip zip p7zip rsync man-db man-pages less xdg-user-dirs networkmanager-applet nm-connection-editor python python-pip nodejs npm ttf-jetbrains-mono-nerd ttf-nerd-fonts-symbols noto-fonts noto-fonts-emoji bluez bluez-utils power-profiles-daemon; do
-    echo -e "  ${TN_BLUE}(+)${NC} $p"
-done
-echo ""
+echo -e " ${TN_CYAN}  Sistema y utilidades:${NC}"
+for p in "${SYSTEM_PKGS[@]}"; do echo -e "  ${TN_BLUE}(+)${NC} $p"; done
 
+echo ""
+echo -e " ${TN_CYAN}  Fuentes:${NC}"
+for p in "${FONT_PKGS[@]}";   do echo -e "  ${TN_BLUE}(+)${NC} $p"; done
+
+echo ""
+echo -e " ${TN_CYAN}  Power management:${NC}"
+for p in "${POWER_PKGS[@]}";  do echo -e "  ${TN_BLUE}(+)${NC} $p"; done
+
+echo ""
 confirm "Instalar todos estos paquetes?" || error "Cancelado."
+
+ALL_PKGS=(
+    "${AMD_PKGS[@]}"
+    "${AUDIO_PKGS[@]}"
+    "${SYSTEM_PKGS[@]}"
+    "${FONT_PKGS[@]}"
+    "${POWER_PKGS[@]}"
+)
 
 echo ""
 info "Instalando — puede tardar varios minutos..."
 echo ""
-sudo pacman -S --noconfirm --needed "${PACKAGES[@]}"
+sudo pacman -S --noconfirm --needed "${ALL_PKGS[@]}"
 echo ""
 ok "Paquetes instalados"
 
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 4 — YAY
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 4 // Instalando yay (AUR Helper)"
 
 if command -v yay &>/dev/null; then
     ok "yay ya esta instalado"
 else
-    info "Clonando e instalando yay..."
+    info "Instalando dependencias..."
+    sudo pacman -S --noconfirm --needed git base-devel
     echo ""
+    info "Clonando yay desde AUR..."
     cd /tmp
     rm -rf yay
-    sudo pacman -S --noconfirm --needed git base-devel
     git clone https://aur.archlinux.org/yay.git
     cd yay
     makepkg -si --noconfirm
@@ -270,15 +265,15 @@ fi
 
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 5 — CARPETAS DE USUARIO
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 5 // Creando carpetas de usuario"
 
 info "Ejecutando xdg-user-dirs-update..."
 xdg-user-dirs-update
 ok "Carpetas estandar creadas"
-dim "  -> Documents, Downloads, Music, Pictures, Videos, Desktop, Templates, Public"
+dim "Documents  Downloads  Music  Pictures  Videos  Desktop"
 
 echo ""
 info "Creando carpetas locales..."
@@ -287,18 +282,19 @@ mkdir -p "$HOME/.local/share/fonts"
 ok "~/.local/share/icons  creada"
 ok "~/.local/share/fonts  creada"
 
+echo ""
 info "Actualizando cache de fuentes..."
 fc-cache -f "$HOME/.local/share/fonts" 2>/dev/null
 ok "Cache de fuentes actualizada"
 
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 6 — SERVICIOS DE AUDIO
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 6 // Activando audio (Pipewire)"
 
-info "Habilitando servicios de audio para $USER..."
+info "Habilitando servicios para $USER..."
 echo ""
 
 systemctl --user enable --now pipewire.service
@@ -316,28 +312,25 @@ systemctl --user status pipewire --no-pager -l 2>/dev/null | head -5 || true
 
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 7 — SERVICIOS DEL SISTEMA
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 7 // Servicios del sistema"
 
 info "Habilitando servicios..."
 echo ""
 
-sudo systemctl enable bluetooth
-ok "bluetooth"
+sudo systemctl enable --now power-profiles-daemon
+ok "power-profiles-daemon  (AMD power management)"
 
 sudo systemctl enable fstrim.timer
 ok "fstrim.timer  (SSD TRIM semanal)"
 
-sudo systemctl enable power-profiles-daemon
-ok "power-profiles-daemon  (AMD power management)"
-
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # FASE 8 — PAQUETES EXTRA OPCIONALES
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "FASE 8 // Paquetes adicionales (opcional)"
 
 echo -e " ${TN_YELLOW}  Paquetes extra desde pacman o AUR${NC}"
@@ -348,46 +341,49 @@ read -rp "  > " EXTRA_NOW
 if [[ -n "$EXTRA_NOW" ]]; then
     echo ""
     info "Instalando con yay..."
+    # shellcheck disable=SC2086
     yay -S --noconfirm --needed $EXTRA_NOW
     ok "Paquetes extra instalados"
 else
-    dim "  Sin paquetes extra."
+    dim "Sin paquetes extra."
 fi
 
 sleep 1
 
-# -----------------------------------------------------------------------------
+# =============================================================================
 # COMPLETADO
-# -----------------------------------------------------------------------------
+# =============================================================================
 section "COMPLETADO // Post-install finalizado"
 
 echo -e "${TN_GREEN}"
-echo "  .___.  .___.  .___."
-echo "  |   |  |   |  |   |"
-echo "  |___|  |___|  |___|"
-echo "  .___________________."
-echo "  |                   |"
-echo "  |   TODO LISTO  (^) |"
-echo "  |___________________|"
+echo "  +---------------------------------------+"
+echo "  |                                       |"
+echo "  |   /\  /\                              |"
+echo "  |  /  \/  \  TODO LISTO                 |"
+echo "  | /  arch  \  Lenovo V15 ready          |"
+echo "  |/__________\                           |"
+echo "  |                                       |"
+echo "  +---------------------------------------+"
 echo -e "${NC}"
 
-echo -e "  ${TN_CYAN}Instalado:${NC}"
-echo -e "  ${DIM}${TN_GRAY}  [+] Drivers AMD   — mesa, vulkan-radeon, VA-API${NC}"
-echo -e "  ${DIM}${TN_GRAY}  [+] Audio          — pipewire + wireplumber${NC}"
-echo -e "  ${DIM}${TN_GRAY}  [+] yay            — AUR helper${NC}"
-echo -e "  ${DIM}${TN_GRAY}  [+] Carpetas       — xdg-user-dirs, icons, fonts${NC}"
-echo -e "  ${DIM}${TN_GRAY}  [+] Servicios      — bluetooth, fstrim, power-profiles${NC}"
-echo -e "  ${DIM}${TN_GRAY}  [+] pacman.conf    — Color, ILoveCandy, ParallelDownloads=10, multilib${NC}"
+echo -e " ${TN_CYAN}  Resumen:${NC}"
 echo ""
-echo -e "  ${TN_YELLOW}Proximos pasos:${NC}"
-echo -e "  ${DIM}  ->  ${TN_CYAN}yay -S hyprland${NC}"
-echo -e "  ${DIM}  ->  ${TN_CYAN}sudo pacman -S kitty${NC}"
-echo -e "  ${DIM}  ->  Relogin para aplicar cambios de shell${NC}"
+dim "[+] pacman.conf    Color / ILoveCandy / ParallelDownloads=10 / multilib"
+dim "[+] Drivers AMD    mesa, vulkan-radeon, libva"
+dim "[+] Audio          pipewire + wireplumber (activo)"
+dim "[+] yay            AUR helper listo"
+dim "[+] Carpetas       xdg-user-dirs / .local/share/icons / fonts"
+dim "[+] Servicios      power-profiles-daemon / fstrim.timer"
+echo ""
+echo -e " ${TN_YELLOW}  Proximos pasos:${NC}"
+echo -e " ${DIM}${TN_GRAY}  ->  ${TN_CYAN}yay -S hyprland${NC}"
+echo -e " ${DIM}${TN_GRAY}  ->  ${TN_CYAN}sudo pacman -S kitty${NC}"
+echo -e " ${DIM}${TN_GRAY}  ->  Relogin para aplicar cambios${NC}"
 echo ""
 
 if confirm "Reiniciar ahora?"; then
     info "Reiniciando..."
     sudo reboot
 else
-    dim "  Reinicia cuando estes listo: sudo reboot"
+    dim "Reinicia cuando estes listo:  sudo reboot"
 fi
