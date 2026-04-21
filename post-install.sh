@@ -371,42 +371,55 @@ else
 fi
 
 sleep 1
-
 # =============================================================================
-# FASE 10 — SERVICIOS MANUALES
+# FASE 10 — SERVICIOS
 # =============================================================================
-section "FASE 10 // Activar servicios manualmente (opcional)"
+section "FASE 10 // Servicios"
 
-echo -e " ${TN_YELLOW}  Servicios a activar${NC}"
-echo -e " ${DIM}${TN_GRAY}  Escribe un servicio por linea. Enter vacio para terminar.${NC}"
-echo -e " ${DIM}${TN_GRAY}  Ejemplos: sddm  /  ly  /  bluetooth  /  cups  /  docker${NC}"
+# Mostrar servicios ya activados por el script
+echo -e " ${TN_CYAN}  Servicios activados automaticamente:${NC}"
+echo ""
+ok "pipewire  /  pipewire-pulse  /  wireplumber"
+ok "power-profiles-daemon"
+ok "fstrim.timer"
 echo ""
 
 SERVICES_ENABLED=()
 
-while true; do
-    read -rp "  ${TN_BLUE}servicio>${NC} " SVC
-    # Enter vacio = salir del loop
-    [[ -z "$SVC" ]] && break
+# Preguntar si quiere activar algo adicional
+if confirm "Quieres activar algun servicio adicional?"; then
+    echo ""
+    echo -e " ${DIM}${TN_GRAY}  Solo escribe el nombre — ejecuta: sudo systemctl enable <nombre>${NC}"
+    echo -e " ${DIM}${TN_GRAY}  Ejemplo: sddm  /  bluetooth  /  cups  /  docker${NC}"
+    echo ""
 
-    echo ""
-    # Intentar enable --now, si falla avisar pero NO detener el script
-    if sudo systemctl enable --now "$SVC" 2>/dev/null; then
-        ok "$SVC activado"
-        SERVICES_ENABLED+=("$SVC")
-    else
-        warn "No se pudo activar $SVC — verifica que este instalado"
-    fi
-    echo ""
-done
+    while true; do
+        read -rp "$(echo -e "  ${TN_BLUE}servicio>${NC} ")" SVC
+        echo ""
 
-if [[ ${#SERVICES_ENABLED[@]} -eq 0 ]]; then
-    dim "Sin servicios manuales activados."
-else
-    echo ""
-    info "Servicios activados en esta sesion:"
-    for svc in "${SERVICES_ENABLED[@]}"; do
-        ok "$svc"
+        # Intentar activar
+        if sudo systemctl enable --now "$SVC" 2>/dev/null; then
+            ok "$SVC activado"
+            SERVICES_ENABLED+=("$SVC")
+        else
+            warn "No se pudo activar '$SVC' — puede que no este instalado."
+            echo ""
+            echo -e "  ${TN_BLUE}[1]${NC} Intentar con otro nombre"
+            echo -e "  ${TN_BLUE}[2]${NC} Omitir y continuar"
+            echo ""
+            read -rp "$(echo -e "  ${TN_YELLOW}[?]${NC} Elige [1/2]: ")" RETRY
+            echo ""
+            if [[ "$RETRY" == "1" ]]; then
+                continue
+            else
+                dim "Omitido."
+                echo ""
+            fi
+        fi
+
+        # Preguntar si quiere activar otro
+        confirm "Activar otro servicio?" || break
+        echo ""
     done
 fi
 
