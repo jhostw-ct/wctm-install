@@ -458,6 +458,10 @@ cat > /etc/hosts <<EOF
 EOF
 echo "  [OK] Hostname"
 
+echo "  -> vconsole.conf..."
+echo "KEYMAP=us" > /etc/vconsole.conf
+echo "  [OK] vconsole.conf"
+
 echo "  -> mkinitcpio..."
 mkinitcpio -P
 echo "  [OK] mkinitcpio"
