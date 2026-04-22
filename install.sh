@@ -426,14 +426,14 @@ sleep 1
 section "FASE 10 // Configurando sistema (chroot)"
 
 # Escribir credenciales en script temporal — nunca como variables de entorno
-cat > /mnt/tmp/setup_creds.sh <<CREDS
+cat > /mnt/root/setup_creds.sh <<CREDS
 #!/bin/bash
 echo "root:${ROOT_PASS}" | chpasswd
 useradd -m -G wheel -s /bin/zsh "${USERNAME}"
 echo "${USERNAME}:${USER_PASS}" | chpasswd
-rm -f /tmp/setup_creds.sh
+rm -f /root/setup_creds.sh
 CREDS
-chmod 700 /mnt/tmp/setup_creds.sh
+chmod 700 /mnt/root/setup_creds.sh
 
 arch-chroot /mnt /bin/bash <<CHROOT
 set -e
@@ -471,7 +471,7 @@ sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 echo "  [OK] sudoers"
 
 echo "  -> Credenciales de usuario..."
-bash /tmp/setup_creds.sh
+bash /root/setup_creds.sh
 echo "  [OK] root y ${USERNAME} configurados"
 
 echo "  -> GRUB..."
