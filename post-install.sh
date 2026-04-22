@@ -198,8 +198,11 @@ section "FASE 5 // Fuentes"
 
 FONT_PKGS=(
     ttf-jetbrains-mono-nerd
+    ttf-iosevka-nerd
+    ttf-firacode-nerd
     ttf-nerd-fonts-symbols
     noto-fonts
+    noto-fonts-cjk
     noto-fonts-emoji
 )
 
@@ -314,15 +317,15 @@ sleep 1
 section "COMPLETADO // Post-install finalizado"
 
 echo -e "${TN_GREEN}"
-echo "  +---------------------------------------+"
-echo "  |                                       |"
-echo "  |   /\  /\                              |"
-echo "  |  /  \/  \  TODO LISTO                 |"
-echo "  | /  arch  \  Lenovo V15 ready          |"
-echo "  |/__________\                           |"
-echo "  |                                       |"
-echo "  +---------------------------------------+"
+echo "  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄"
+echo "  █          __                        █"
+echo "  █         /  \         TODO LISTO    █"
+echo "  █        / /\ \        Lenovo V15    █"
+echo "  █       / /__\ \       Ready         █"
+echo "  █      /_/    \_\                    █"
+echo "  █▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄"
 echo -e "${NC}"
+
 
 echo -e " ${TN_CYAN}  Resumen:${NC}"
 echo ""

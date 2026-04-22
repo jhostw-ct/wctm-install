@@ -214,15 +214,21 @@ done
 ok "Contrasena root configurada"
 echo ""
 
-# Contraseña usuario
-echo -e " ${TN_BLUE}[>]${NC} Contrasena para ${TN_WHITE}${USERNAME}${NC}:"
-while true; do
-    read -rsp "     Password : " USER_PASS; echo
-    read -rsp "     Confirmar: " USER_PASS2; echo
-    [[ "$USER_PASS" == "$USER_PASS2" ]] && break
-    warn "No coinciden, intenta de nuevo."
-done
-ok "Contrasena de ${USERNAME} configurada"
+# Contraseña usuario — opción de reusar la de root
+if confirm "Usar la misma contrasena para ${USERNAME}?"; then
+    USER_PASS="$ROOT_PASS"
+    ok "Contrasena de ${USERNAME} = root"
+else
+    echo ""
+    echo -e " ${TN_BLUE}[>]${NC} Contrasena para ${TN_WHITE}${USERNAME}${NC}:"
+    while true; do
+        read -rsp "     Password : " USER_PASS; echo
+        read -rsp "     Confirmar: " USER_PASS2; echo
+        [[ "$USER_PASS" == "$USER_PASS2" ]] && break
+        warn "No coinciden, intenta de nuevo."
+    done
+    ok "Contrasena de ${USERNAME} configurada"
+fi
 
 sleep 1
 
@@ -390,6 +396,7 @@ PACKAGES=(
     wl-clipboard
     qt5-wayland
     qt6-wayland
+    nwg-look
 
     # — Terminal y herramientas ───────────────────────────────────────────────
     kitty
