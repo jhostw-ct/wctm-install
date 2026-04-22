@@ -171,6 +171,23 @@ grep "^Server" /etc/pacman.d/mirrorlist | head -5 | while read -r line; do
     dim "$line"
 done
 
+echo ""
+info "Habilitando multilib en el live ISO (necesario para paquetes lib32-*)..."
+if grep -q "^\[multilib\]" /etc/pacman.conf; then
+    ok "multilib ya estaba habilitado en el live ISO"
+else
+    sed -i '/^#\[multilib\]/{
+        s/^#//
+        n
+        s/^#//
+    }' /etc/pacman.conf
+    ok "multilib habilitado en el live ISO"
+fi
+
+info "Sincronizando base de datos con multilib..."
+pacman -Sy --noconfirm
+ok "Base de datos sincronizada"
+
 sleep 1
 
 # -----------------------------------------------------------------------------
