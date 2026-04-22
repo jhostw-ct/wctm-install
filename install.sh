@@ -3,7 +3,6 @@
 #  install.sh — Arch Linux Base Installer
 #  Autor: william | Hardware: Lenovo V15 G2 ALC (Ryzen 5 5500U)
 #  Uso: Desde el live ISO de Arch Linux
-#       curl -O https://raw.githubusercontent.com/TU_USER/arch-install/main/install.sh
 #       bash install.sh
 # =============================================================================
 
@@ -12,16 +11,15 @@ set -e
 # -----------------------------------------------------------------------------
 # COLORES — Tokyo Night
 # -----------------------------------------------------------------------------
-TN_BG='\033[0m'
-TN_PURPLE='\033[38;5;141m'   # #bb9af7 — purple
-TN_BLUE='\033[38;5;111m'     # #7aa2f7 — blue
-TN_CYAN='\033[38;5;73m'      # #7dcfff — cyan
-TN_GREEN='\033[38;5;120m'    # #9ece6a — green
-TN_YELLOW='\033[38;5;179m'   # #e0af68 — yellow
-TN_RED='\033[38;5;203m'      # #f7768e — red
-TN_MAGENTA='\033[38;5;204m'  # #ff007c — magenta
-TN_GRAY='\033[38;5;238m'     # dark gray
-TN_WHITE='\033[38;5;255m'    # bright white
+TN_PURPLE='\033[38;5;141m'
+TN_BLUE='\033[38;5;111m'
+TN_CYAN='\033[38;5;73m'
+TN_GREEN='\033[38;5;120m'
+TN_YELLOW='\033[38;5;179m'
+TN_RED='\033[38;5;203m'
+TN_MAGENTA='\033[38;5;204m'
+TN_GRAY='\033[38;5;238m'
+TN_WHITE='\033[38;5;255m'
 BOLD='\033[1m'
 DIM='\033[2m'
 NC='\033[0m'
@@ -33,7 +31,7 @@ info()  { echo -e " ${TN_CYAN}[*]${NC} $1"; }
 ok()    { echo -e " ${TN_GREEN}[+]${NC} $1"; }
 warn()  { echo -e " ${TN_YELLOW}[!]${NC} $1"; }
 error() { echo -e " ${TN_RED}[x]${NC} $1"; exit 1; }
-dim()   { echo -e " ${DIM}${TN_GRAY}$1${NC}"; }
+dim()   { echo -e " ${DIM}${TN_GRAY}    $1${NC}"; }
 
 section() {
     clear
@@ -44,14 +42,11 @@ section() {
     echo -e "${NC}"
 }
 
-# Enter o Y = confirmar
 confirm() {
     read -rp "$(echo -e " ${TN_YELLOW}[?]${NC} $1 ${DIM}[Y/n]:${NC} ")" ans
     [[ -z "$ans" || "$ans" =~ ^[Yy]$ ]]
 }
 
-# Pedir un valor con confirmación — reintenta si el usuario no confirma
-# ask_confirmed <varname> <prompt> <default>
 ask_confirmed() {
     local varname="$1"
     local prompt="$2"
@@ -127,11 +122,11 @@ else
         1)
             echo ""
             info "Comandos utiles dentro de iwctl:"
-            dim "  device list"
-            dim "  station wlan0 scan"
-            dim "  station wlan0 get-networks"
-            dim "  station wlan0 connect \"NombreRed\""
-            dim "  exit"
+            dim "device list"
+            dim "station wlan0 scan"
+            dim "station wlan0 get-networks"
+            dim "station wlan0 connect \"NombreRed\""
+            dim "exit"
             echo ""
             iwctl
             ;;
@@ -151,9 +146,37 @@ ok "NTP activado"
 sleep 1
 
 # -----------------------------------------------------------------------------
-# FASE 2 — DATOS DEL SISTEMA
+# FASE 2 — MIRRORS CON REFLECTOR
 # -----------------------------------------------------------------------------
-section "FASE 2 // Configuracion del sistema"
+section "FASE 2 // Optimizando mirrors con reflector"
+
+info "Instalando reflector en el live ISO..."
+pacman -Sy --noconfirm reflector
+
+echo ""
+info "Generando mirrorlist optimizado (Peru / Chile / Brasil, https, los 10 mas rapidos)..."
+reflector \
+    --country Peru,Chile,Brazil \
+    --protocol https \
+    --sort rate \
+    --latest 20 \
+    --fastest 10 \
+    --save /etc/pacman.d/mirrorlist
+
+echo ""
+ok "Mirrorlist generado"
+echo ""
+echo -e " ${DIM}${TN_GRAY}  Mirrors seleccionados:${NC}"
+grep "^Server" /etc/pacman.d/mirrorlist | head -5 | while read -r line; do
+    dim "$line"
+done
+
+sleep 1
+
+# -----------------------------------------------------------------------------
+# FASE 3 — DATOS DEL SISTEMA
+# -----------------------------------------------------------------------------
+section "FASE 3 // Configuracion del sistema"
 
 echo -e " ${DIM}${TN_GRAY}  Ingresa los datos. Podras confirmar cada uno antes de continuar.${NC}"
 echo ""
@@ -163,7 +186,7 @@ echo ""
 ask_confirmed USERNAME "Nombre de usuario" "william"
 echo ""
 
-# Contraseña root (sin confirmación de texto, solo doble ingreso)
+# Contraseña root
 echo -e " ${TN_BLUE}[>]${NC} Contrasena para ROOT:"
 while true; do
     read -rsp "     Password : " ROOT_PASS; echo
@@ -174,6 +197,7 @@ done
 ok "Contrasena root configurada"
 echo ""
 
+# Contraseña usuario
 echo -e " ${TN_BLUE}[>]${NC} Contrasena para ${TN_WHITE}${USERNAME}${NC}:"
 while true; do
     read -rsp "     Password : " USER_PASS; echo
@@ -186,9 +210,9 @@ ok "Contrasena de ${USERNAME} configurada"
 sleep 1
 
 # -----------------------------------------------------------------------------
-# FASE 3 — SELECCIÓN DE DISCO
+# FASE 4 — SELECCIÓN DE DISCO
 # -----------------------------------------------------------------------------
-section "FASE 3 // Seleccion de disco"
+section "FASE 4 // Seleccion de disco"
 
 mapfile -t DISKS < <(lsblk -d -n -o NAME,SIZE,MODEL | grep -v "^loop")
 
@@ -236,55 +260,7 @@ echo ""
 confirm "Confirmas usar $DISK?" || error "Operacion cancelada."
 
 # -----------------------------------------------------------------------------
-# FASE 4 — PAQUETES
-# -----------------------------------------------------------------------------
-section "FASE 4 // Paquetes a instalar"
-
-BASE_PACKAGES=(
-    base
-    linux
-    linux-lts
-    linux-firmware
-    amd-ucode
-    base-devel
-    sudo
-    nano
-    git
-    curl
-    wget
-    zsh
-    zsh-completions
-    networkmanager
-    grub
-    efibootmgr
-)
-
-echo -e " ${TN_CYAN}  Paquetes base:${NC}"
-echo ""
-for pkg in "${BASE_PACKAGES[@]}"; do
-    echo -e "  ${TN_GREEN}(+)${NC} $pkg"
-done
-echo ""
-
-echo -e " ${TN_YELLOW}  Paquetes extra${NC} ${DIM}(separados por espacio, Enter para ninguno):${NC}"
-read -rp "  > " EXTRA_INPUT
-
-EXTRA_PACKAGES=()
-if [[ -n "$EXTRA_INPUT" ]]; then
-    read -ra EXTRA_PACKAGES <<< "$EXTRA_INPUT"
-    echo ""
-    echo -e " ${TN_CYAN}  Extras agregados:${NC}"
-    for pkg in "${EXTRA_PACKAGES[@]}"; do
-        echo -e "  ${TN_MAGENTA}[+]${NC} $pkg"
-    done
-fi
-
-ALL_PACKAGES=("${BASE_PACKAGES[@]}" "${EXTRA_PACKAGES[@]}")
-
-sleep 1
-
-# -----------------------------------------------------------------------------
-# RESUMEN FINAL
+# RESUMEN FINAL ANTES DE INSTALAR
 # -----------------------------------------------------------------------------
 section "RESUMEN // Confirma antes de continuar"
 
@@ -295,7 +271,6 @@ echo -e "  ${TN_CYAN}EFI          :${NC}  $PART_EFI  -> 1G -> FAT32"
 echo -e "  ${TN_CYAN}Root         :${NC}  $PART_ROOT -> Resto -> ext4"
 echo -e "  ${TN_CYAN}Timezone     :${NC}  America/Lima"
 echo -e "  ${TN_CYAN}Locale       :${NC}  en_US.UTF-8"
-echo -e "  ${TN_CYAN}Paquetes     :${NC}  ${DIM}${ALL_PACKAGES[*]}${NC}"
 echo ""
 
 confirm "Todo correcto? Iniciar instalacion" || error "Instalacion cancelada."
@@ -314,7 +289,7 @@ ok "Disco limpiado"
 
 info "Creando tabla GPT y particiones..."
 sgdisk -n 1:0:+1G  -t 1:ef00 -c 1:"EFI"  "$DISK"
-sgdisk -n 2:0:0     -t 2:8300 -c 2:"ROOT" "$DISK"
+sgdisk -n 2:0:0    -t 2:8300 -c 2:"ROOT" "$DISK"
 ok "Particiones creadas"
 
 sleep 2
@@ -345,11 +320,76 @@ ok "Particiones montadas"
 sleep 1
 
 # -----------------------------------------------------------------------------
-section "FASE 8 // Instalando sistema base"
+section "FASE 8 // Instalando sistema base (pacstrap)"
+
+PACKAGES=(
+    # — Base ──────────────────────────────────────────────────────────────────
+    base
+    linux
+    linux-firmware
+    amd-ucode
+    base-devel
+    sudo
+    nano
+    git
+    curl
+    wget
+    zsh
+    zsh-completions
+    networkmanager
+    grub
+    efibootmgr
+
+    # — Drivers AMD ───────────────────────────────────────────────────────────
+    mesa
+    lib32-mesa
+    vulkan-radeon
+    lib32-vulkan-radeon
+    libva-mesa-driver
+    lib32-libva-mesa-driver
+
+    # — Audio — Pipewire ──────────────────────────────────────────────────────
+    pipewire
+    pipewire-pulse
+    pipewire-alsa
+    pipewire-jack
+    wireplumber
+    alsa-utils
+
+    # — Power y sistema ───────────────────────────────────────────────────────
+    power-profiles-daemon
+    xdg-user-dirs
+
+    # — Hyprland y Wayland ────────────────────────────────────────────────────
+    hyprland
+    waybar
+    rofi
+    sddm
+    xdg-desktop-portal-hyprland
+    xdg-desktop-portal-gtk
+    hyprpolkitagent
+    grim
+    slurp
+    wl-clipboard
+    qt5-wayland
+    qt6-wayland
+
+    # — Terminal y herramientas ───────────────────────────────────────────────
+    kitty
+    neovim
+    fastfetch
+    yazi
+    7zip
+    ripgrep
+    fzf
+    fd
+    udisks2
+    udiskie
+)
 
 info "Ejecutando pacstrap — puede tardar varios minutos..."
 echo ""
-pacstrap -K /mnt "${ALL_PACKAGES[@]}"
+pacstrap -K /mnt "${PACKAGES[@]}"
 echo ""
 ok "Sistema base instalado"
 
@@ -368,7 +408,17 @@ sleep 1
 # -----------------------------------------------------------------------------
 section "FASE 10 // Configurando sistema (chroot)"
 
-arch-chroot /mnt /bin/bash <<CHROOT_SCRIPT
+# Escribir credenciales en script temporal — nunca como variables de entorno
+cat > /mnt/tmp/setup_creds.sh <<CREDS
+#!/bin/bash
+echo "root:${ROOT_PASS}" | chpasswd
+useradd -m -G wheel -s /bin/zsh "${USERNAME}"
+echo "${USERNAME}:${USER_PASS}" | chpasswd
+rm -f /tmp/setup_creds.sh
+CREDS
+chmod 700 /mnt/tmp/setup_creds.sh
+
+arch-chroot /mnt /bin/bash <<CHROOT
 set -e
 
 echo "  -> Zona horaria America/Lima..."
@@ -382,71 +432,75 @@ locale-gen > /dev/null
 echo "LANG=en_US.UTF-8" > /etc/locale.conf
 echo "  [OK] Locale"
 
-echo "  -> Hostname $HOSTNAME..."
-echo "$HOSTNAME" > /etc/hostname
+echo "  -> Hostname ${HOSTNAME}..."
+echo "${HOSTNAME}" > /etc/hostname
 cat > /etc/hosts <<EOF
 127.0.0.1   localhost
 ::1         localhost
-127.0.1.1   $HOSTNAME.localdomain $HOSTNAME
+127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
 echo "  [OK] Hostname"
 
-echo "  -> NetworkManager..."
-systemctl enable NetworkManager
-echo "  [OK] NetworkManager"
-
-echo "  -> Contrasena root..."
-echo "root:$ROOT_PASS" | chpasswd
-echo "  [OK] root password"
-
-echo "  -> Usuario $USERNAME (shell: zsh)..."
-useradd -m -G wheel -s /bin/zsh "$USERNAME"
-echo "$USERNAME:$USER_PASS" | chpasswd
-echo "  [OK] Usuario creado"
+echo "  -> mkinitcpio..."
+mkinitcpio -P
+echo "  [OK] mkinitcpio"
 
 echo "  -> sudo para grupo wheel..."
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 echo "  [OK] sudoers"
+
+echo "  -> Credenciales de usuario..."
+bash /tmp/setup_creds.sh
+echo "  [OK] root y ${USERNAME} configurados"
 
 echo "  -> GRUB..."
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=WCTMi
 grub-mkconfig -o /boot/grub/grub.cfg
 echo "  [OK] GRUB"
 
+echo "  -> Habilitando servicios..."
+systemctl enable NetworkManager
+echo "  [OK] NetworkManager"
+
+systemctl enable power-profiles-daemon
+echo "  [OK] power-profiles-daemon"
+
+systemctl enable fstrim.timer
+echo "  [OK] fstrim.timer"
+
+systemctl enable sddm
+echo "  [OK] sddm"
+
 echo ""
 echo "  Configuracion completada."
-CHROOT_SCRIPT
+CHROOT
 
 ok "Chroot completado"
 
 # -----------------------------------------------------------------------------
 section "EXTRA // Copiando post-install.sh al usuario"
 
-# Buscar post-install.sh en el mismo directorio que este script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POST_SCRIPT="$SCRIPT_DIR/post-install.sh"
 
 if [[ -f "$POST_SCRIPT" ]]; then
     TARGET_HOME="/mnt/home/$USERNAME"
     cp "$POST_SCRIPT" "$TARGET_HOME/post-install.sh"
-    # Dar ownership al usuario (necesitamos su UID/GID dentro del sistema instalado)
     USERID=$(arch-chroot /mnt id -u "$USERNAME")
     GROUPID=$(arch-chroot /mnt id -g "$USERNAME")
     chown "$USERID:$GROUPID" "$TARGET_HOME/post-install.sh"
     chmod +x "$TARGET_HOME/post-install.sh"
     ok "post-install.sh copiado a /home/$USERNAME/"
-    ok "Permisos: chmod +x aplicado"
     info "Al iniciar sesion ejecuta: bash ~/post-install.sh"
 else
     warn "No se encontro post-install.sh junto a install.sh"
-    warn "Ruta buscada: $POST_SCRIPT"
     info "Descargalo manualmente despues de reiniciar desde tu repo."
 fi
 
 sleep 1
 
 # -----------------------------------------------------------------------------
-section "COMPLETADO // Arch Linux instalado mi hermoso"
+section "COMPLETADO // Arch Linux instalado"
 
 echo -e "${TN_GREEN}"
 echo "  .o88b.  .d88b.  .88b  d88. d8888b. db      db"
@@ -462,9 +516,9 @@ echo -e "  ${TN_CYAN}Usuario  :${NC}  $USERNAME  ${DIM}(shell: zsh)${NC}"
 echo -e "  ${TN_CYAN}Disco    :${NC}  $DISK"
 echo ""
 echo -e "  ${TN_YELLOW}Proximos pasos:${NC}"
-echo -e "  ${DIM}  1. Retira el USB${NC}"
-echo -e "  ${DIM}  2. Inicia sesion como ${TN_WHITE}$USERNAME${NC}"
-echo -e "  ${DIM}  3. Ejecuta${NC} ${TN_CYAN}zsh ~/post-install.sh${NC}"
+dim "1. Retira el USB"
+dim "2. Inicia sesion como $USERNAME en SDDM"
+dim "3. Ejecuta: bash ~/post-install.sh"
 echo ""
 
 if confirm "Desmontar y reiniciar ahora?"; then
